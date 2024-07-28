@@ -15,7 +15,7 @@ pipeline {
         stage('Run Ansible Playbook') {
             steps {
                 withCredentials([sshUserPrivateKey(credentialsId: 'ssh-key-id', keyFileVariable: 'SSH_KEY')]) {
-                    sh 'ansible-playbook -i /root/inventory.ini /root/flaskcrud.yaml'
+                    sh 'ansible-playbook -i inventory.ini flaskcrud.yaml'
                 }
             }
         }
