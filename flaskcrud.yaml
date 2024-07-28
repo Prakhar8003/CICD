@@ -1,0 +1,68 @@
+---
+- name: Install necessary packages
+  hosts: all
+  become: true
+  tasks:
+    - name: Update apt repository and cache
+      apt: 
+        update_cache: yes
+        force_apt_get: yes
+        cache_valid_time: 3600
+
+    - name: Install python3, pip, git, and sqlite3
+      apt:
+        name:
+          - python3
+          - python3-pip
+          - git
+          - sqlite3
+
+- name: Deploy Flask app
+  hosts: all
+  tasks:
+    - name: Clone the repository
+      git:
+        repo: 'https://github.com/Prakhar8003/CRUD_Pro.git'
+        dest: /root/CRUD_Pro
+        version: master
+
+    - name: Install dependencies
+      pip:
+        requirements: /root/CRUD_Pro/requirements.txt
+        executable: pip3
+
+    - name: Initialize the database
+      command: chdir=/root/CRUD_Pro python3 -c "from app import init_db; init_db()"
+
+    - name: Create systemd service file for Flask app
+      copy:
+        dest: /etc/systemd/system/crud_pro.service
+        content: |
+          [Unit]
+          Description=CRUD Pro Flask App
+          After=network.target
+
+          [Service]
+          User=root
+          WorkingDirectory=/root/CRUD_Pro
+          ExecStart=/usr/bin/python3 /root/CRUD_Pro/app.py
+          Restart=always
+          Environment="FLASK_APP=app.py"
+          Environment="FLASK_ENV=production"
+          Environment="PYTHONUNBUFFERED=1"
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd
+      command: systemctl daemon-reload
+
+    - name: Enable and start the Flask app service
+      systemd:
+        name: crud_pro
+        enabled: yes
+        state: started
+
+    - name: Ensure Flask app is accessible
+      debug:
+        msg: "Flask app should be running and accessible at http://<managed_node_ip>:5000"
